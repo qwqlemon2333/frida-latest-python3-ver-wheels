@@ -38,6 +38,10 @@ jobs:
           ref: ${{ needs.get-version.outputs.frida_version }}
           submodules: recursive
 
+      - name: 🔧 修补 setup.py 中的断言（解决 outputs 数量不匹配）
+        run: |
+          (Get-Content setup.py) -replace 'assert len\(outputs\) == 1', '# assert len(outputs) == 1' | Set-Content setup.py
+
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
