@@ -1,65 +1,47 @@
-name: Build Custom frida Wheels
+name: Build abi3 wheel for frida-python
 
 on:
   workflow_dispatch:
     inputs:
-      python_version:
-        description: 'Python 版本'
-        required: true
-        default: '3.14'
-  # schedule:
-  #   - cron: '0 0 * * 0'  # 可选：每周日自动编译
+      frida_version:
+        description: 'Frida 版本 (留空则自动获取最新)'
+        required: false
+        default: ''
+  schedule:
+    - cron: '0 0 * * 0'  # 每周日凌晨自动运行
 
 jobs:
-  build-windows:
-    # ⚠️ 关键：使用 windows-2019 镜像可避免新版 MSVC 工具链的潜在问题
-    # GitHub 官方文档指出，actions/upload-artifact@v4 不再支持从多个 job 上传同名文件
-    runs-on: windows-2019
-    strategy:
-      matrix:
-        python-version: [${{ github.event.inputs.python_version }}]
-      fail-fast: false
-
+  build-abi3-wheel:
+    runs-on: windows-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        repository: frida/frida-python
-        submodules: 'recursive'
+      - name: Checkout frida-python
+        uses: actions/checkout@v4
+        with:
+          repository: frida/frida-python
+          ref: ${{ github.event.inputs.frida_version || 'latest' }}
+          submodules: recursive
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-    - name: Display Python version and environment
-      run: |
-        python --version
-        pip --version
-        echo "PATH=$Env:PATH"
+      - name: Install build dependencies
+        run: pip install build wheel
 
-    - name: Install build dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install build wheel
+      - name: Setup MSVC (msvc-kit)
+        uses: loonghao/msvc-kit@v1
+        with:
+          arch: x64
 
-    # 可选：设置 FRIDA_VERSION 环境变量来指定版本
-    # - name: Set FRIDA_VERSION from environment
-    #   run: echo "FRIDA_VERSION=17.9.1" >> $Env:GITHUB_ENV
+      - name: Build abi3 wheel
+        run: python setup.py bdist_wheel --py-limited-api=cp311
+        env:
+          CC: cl.exe
+          CXX: cl.exe
 
-    - name: Build wheel
-      run: |
-        python -m build --wheel
-      env:
-        # 显式设置 MSVC 编译器，避免路径问题
-        CC: cl.exe
-        CXX: cl.exe
-
-    - name: List dist directory
-      run: dir dist
-
-    - name: Upload wheel as artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: frida-wheels-py${{ matrix.python-version }}
-        path: ./dist/*.whl
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frida-abi3-wheel
+          path: ./dist/*.whl
