@@ -30,7 +30,7 @@ jobs:
         run: pip install build wheel
 
       - name: Setup MSVC (msvc-kit)
-        uses: loonghao/msvc-kit@v1
+        uses: loonghao/msvc-kit@main
         with:
           arch: x64
 
