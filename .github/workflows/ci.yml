@@ -16,16 +16,17 @@ jobs:
     outputs:
       frida_version: ${{ steps.get_tag.outputs.version }}
     steps:
-      - name: 获取最新 Frida release 标签
-        id: get_tag
-        run: |
-          if [ -n "${{ github.event.inputs.frida_version }}" ]; then
-            echo "version=${{ github.event.inputs.frida_version }}" >> $GITHUB_OUTPUT
-          else
-            LATEST=$(curl -s https://api.github.com/repos/frida/frida/releases/latest | jq -r .tag_name)
-            echo "version=${LATEST#v}" >> $GITHUB_OUTPUT
-          fi
-
+        - name: 获取最新 Frida release 标签
+          id: get_tag
+          run: |
+            if [ -n "${{ github.event.inputs.frida_version }}" ]; then
+              echo "version=${{ github.event.inputs.frida_version }}" >> $GITHUB_OUTPUT
+            else
+              LATEST=$(curl -s https://api.github.com/repos/frida/frida/releases/latest | jq -r .tag_name)
+              # 去掉开头的 'v' 字符
+              VERSION=${LATEST#v}
+              echo "version=$VERSION" >> $GITHUB_OUTPUT
+            fi
   build-abi3-wheel:
     needs: get-version
     runs-on: windows-latest
@@ -46,7 +47,7 @@ jobs:
         run: pip install build wheel
 
       - name: Setup MSVC (msvc-kit)
-        uses: loonghao/msvc-kit@v1
+        uses: loonghao/msvc-kit@main
         with:
           arch: x64
 
